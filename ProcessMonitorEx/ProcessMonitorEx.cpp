@@ -36,7 +36,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING)
 			&devName, 
 			FILE_DEVICE_UNKNOWN, 
 			0, 
-			TRUE, 
+			FALSE, 
 			&devObj);
 		if (!NT_SUCCESS(status))
 		{
