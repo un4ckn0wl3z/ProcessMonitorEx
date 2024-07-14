@@ -1,13 +1,27 @@
 #include <Windows.h>
 #include <stdio.h>
 #include <string>
+#include <iostream>
 #include "..\ProcessMonitorEx\ProcessMonitorExCommon.h"
 
 void DisplayData(const BYTE* buffer, DWORD size);
 void DisplayTime(ULONG64 time);
 
+
 int main()
 {
+	std::cout << R"(
+
+  _____                             __  __             _ _             ______      
+ |  __ \                           |  \/  |           (_) |           |  ____|     
+ | |__) | __ ___   ___ ___  ___ ___| \  / | ___  _ __  _| |_ ___  _ __| |__  __  __
+ |  ___/ '__/ _ \ / __/ _ \/ __/ __| |\/| |/ _ \| '_ \| | __/ _ \| '__|  __| \ \/ /
+ | |   | | | (_) | (_|  __/\__ \__ \ |  | | (_) | | | | | || (_) | |  | |____ >  < 
+ |_|   |_|  \___/ \___\___||___/___/_|  |_|\___/|_| |_|_|\__\___/|_|  |______/_/\_\
+
+ The kernelmode process monitor developed by un4ckn0wl3z
+)" << std::endl;
+
 	HANDLE hDevice = CreateFile(
 		L"\\\\.\\ProcessMonitorEx",
 		GENERIC_READ,
