@@ -94,7 +94,25 @@ void DisplayData(const BYTE* buffer, DWORD size)
 
 			break;
 		}
-
+		case EventType::ThreadCreate:
+		{
+			auto& info = data->ThreadCreate;
+			printf("Thread Create: PID: %u TID: %u\n",
+				info.ProcessId,
+				info.ThreadId
+			);
+			break;
+		}
+		case EventType::ThreadExit:
+		{
+			auto& info = data->ThreadExit;
+			printf("Thread Exit: PID: %u TID: %u ExitCode: %u\n",
+				info.ProcessId,
+				info.ThreadId,
+				info.ExitCode
+			);
+			break;
+		}
 		default:
 			break;
 		}

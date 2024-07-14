@@ -10,6 +10,13 @@ VOID OnProcessCallback(
 	_Inout_opt_ PPS_CREATE_NOTIFY_INFO CreateInfo
 	);
 
+
+VOID OnThreadCallback(
+	_In_ HANDLE ProcessId,
+	_In_ HANDLE ThreadId,
+	_In_ BOOLEAN Create
+	);
+
 void ProcessMonitorExUnload(PDRIVER_OBJECT DriverObject);
 
 void AddItem(FullEventData* item);
@@ -24,7 +31,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING)
 {
 	NTSTATUS status;
 	PDEVICE_OBJECT devObj = nullptr;
-	bool symLinkCreated = false;
+	bool symLinkCreated = false, procNotifyCreated = false, threadNotifyCreated = false;
 	UNICODE_STRING symName = RTL_CONSTANT_STRING(L"\\??\\ProcessMonitorEx");
 	UNICODE_STRING devName = RTL_CONSTANT_STRING(L"\\Device\\ProcessMonitorEx");
 
@@ -56,6 +63,14 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING)
 		{
 			break;
 		}
+		procNotifyCreated = true;
+
+		status = PsSetCreateThreadNotifyRoutine(OnThreadCallback);
+		if (!NT_SUCCESS(status))
+		{
+			break;
+		}
+		threadNotifyCreated = true;
 
 	} while (false);
 
@@ -69,6 +84,14 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING)
 		if (symLinkCreated)
 		{
 			IoDeleteSymbolicLink(&symName);
+		}
+		if (procNotifyCreated)
+		{
+			PsSetCreateProcessNotifyRoutineEx(OnProcessCallback, TRUE);
+		}
+		if (threadNotifyCreated)
+		{
+			PsRemoveCreateThreadNotifyRoutine(OnThreadCallback);
 		}
 		return status;
 	}
@@ -157,8 +180,60 @@ VOID OnProcessCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE_NOTIFY_IN
 	return VOID();
 }
 
+VOID OnThreadCallback(HANDLE ProcessId, HANDLE ThreadId, BOOLEAN Create)
+{
+	auto size = sizeof(FullEventData);
+	auto item = (FullEventData*)ExAllocatePool2(
+		POOL_FLAG_PAGED | POOL_FLAG_UNINITIALIZED,
+		size,
+		DRIVER_TAG
+	);
+
+	if (item == nullptr)
+	{
+		KdPrint((DRIVER_PREFIX "Out of memory\n"));
+		return;
+	}
+
+	auto& header = item->Data.Header;
+	KeQuerySystemTimePrecise((PLARGE_INTEGER)&header.Timestamp);
+
+
+	if (Create)
+	{
+		header.Size = sizeof(EventHeader) + sizeof(ThreadCreateInfo);
+		header.Type = EventType::ThreadCreate;
+
+		auto& data = item->Data.ThreadCreate;
+		data.ProcessId = HandleToULong(ProcessId);
+		data.ThreadId = HandleToULong(ThreadId);
+	}
+	else
+	{
+		header.Size = sizeof(EventHeader) + sizeof(ThreadExitInfo);
+		header.Type = EventType::ThreadExit;
+
+		auto& data = item->Data.ThreadExit;
+		data.ProcessId = HandleToULong(ProcessId);
+		data.ThreadId = HandleToULong(ThreadId);
+
+		PETHREAD thread;
+		NTSTATUS status = PsLookupThreadByThreadId(ThreadId, &thread);
+
+		if (NT_SUCCESS(status))
+		{
+			data.ExitCode = PsGetThreadExitStatus(thread);
+			ObDereferenceObject(thread);
+		}
+	}
+
+	AddItem(item);
+
+}
+
 void ProcessMonitorExUnload(PDRIVER_OBJECT DriverObject)
 {
+	PsRemoveCreateThreadNotifyRoutine(OnThreadCallback);
 	PsSetCreateProcessNotifyRoutineEx(OnProcessCallback, TRUE);
 	UNICODE_STRING symName = RTL_CONSTANT_STRING(L"\\??\\ProcessMonitorEx");
 	IoDeleteSymbolicLink(&symName);

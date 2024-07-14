@@ -30,6 +30,17 @@ struct ProcessExitInfo
 	ULONG ExitCode;
 };
 
+struct ThreadCreateInfo
+{
+	ULONG ProcessId;
+	ULONG ThreadId;
+};
+
+struct ThreadExitInfo : ThreadCreateInfo
+{
+	ULONG ExitCode;
+};
+
 struct EventData
 {
 	EventHeader Header;
@@ -37,5 +48,7 @@ struct EventData
 	{
 		ProcessCreateInfo ProcessCreate;
 		ProcessExitInfo ProcessExit;
+		ThreadCreateInfo ThreadCreate;
+		ThreadExitInfo ThreadExit;
 	};
 };
