@@ -4,7 +4,7 @@
 #include "FastMutex.h"
 
 #define DRIVER_PREFIX "ProcessMonitorEx: "
-#define DRIVER_TAG "xepw"
+#define DRIVER_TAG 'xepw'
 
 struct FullEventData
 {
